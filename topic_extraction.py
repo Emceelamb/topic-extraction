@@ -13,6 +13,10 @@ def clean_text(s):
     Removes formatting
     """
     s = s.lower()
+    s = re.sub("<(.|\n|’)*?>", "", s)
+    s = s.replace("“", '"').replace("”", '"').replace("’", "'")
+    s = s.replace("\n", "")
+
     s = s.split()
     s = " ".join(s)
     s = re.sub(f"[{re.escape(string.punctuation)}]", "", s)
@@ -30,30 +34,38 @@ def remove_stop_words(s):
     return s
 
 
-def main():
+def sanitize_text(text):
     lemmatizer = WordNetLemmatizer()
-
-    f = open("sample.txt", "r")
-    preface = f.read()
-
     # Sanitizes and tokenizes text
-    preface_tokens = sent_tokenize(preface)
+    preface_tokens = sent_tokenize(text)
     preface_tokens = [clean_text(w) for w in preface_tokens]
     preface_tokens = [remove_stop_words(w) for w in preface_tokens]
     preface_tokens = [lemmatizer.lemmatize(w) for w in preface_tokens]
+    return preface_tokens
 
+
+def get_topics(tokens):
     # Calculates vectors
     tfv = TfidfVectorizer(tokenizer=word_tokenize, token_pattern=None)
-    corpus_transformed = tfv.fit_transform(preface_tokens)
+    corpus_transformed = tfv.fit_transform(tokens)
     svd = decomposition.TruncatedSVD(n_components=10)
     corpus_svd = svd.fit(corpus_transformed)
-
     # Get topic scores
     feature_scores = dict(zip(tfv.get_feature_names_out(), corpus_svd.components_[0]))
     topic_output = sorted(feature_scores, key=feature_scores.get, reverse=True)[:5]
+    return topic_output
 
-    print(topic_output)
+
+def main():
+    f = open("sample.txt", "r")
+    text = f.read()
+
+    preface_tokens = sanitize_text(text)
+    topics = get_topics(preface_tokens)
+
+    print(topics)
 
 
 if __name__ == "__main__":
     main()
+
